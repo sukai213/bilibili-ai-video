@@ -1,0 +1,95 @@
+B站AI视频制作发布技能包 说明书
+
+> 版本：1.0 ｜ 制作日期：2026-08-07 ｜ 状态：已在真实环境跑通并成功发布
+
+一、这是什么
+
+一套「AI 科技测评视频」从零制作到自动发布 B 站的可复用技能（Codex Skill），包含：
+  - 原创文案与分镜模板（严禁抄袭，数据须标注来源）
+  - Qwen3-TTS 本地配音（35 岁科技男主播音色，逐段生成 + 断点续跑）
+  - 全息蓝科技风幻灯片与封面生成（1920×1080）
+  - ffmpeg 自动剪辑成片 + 响度标准化（-16 LUFS，符合 B 站要求）
+  - 从已登录 B 站客户端提取登录态（CDP，免密码）
+  - 网页投稿 API 自动上传发布（封面 → 预上传 → 分块上传 → 提交）
+  - 发布后自动验证（公开状态 / 播放地址 / 标签 / 审核结果）
+
+实战验证：DeepSeek V4 Flash「贾维斯时刻」实测视频，5 分 15 秒，
+已发布 https://www.bilibili.com/video/BV1gSup66E4i
+
+二、包内结构
+
+``
+B站AI视频技能包\
+├── 说明书.md / 说明书.txt        本说明书
+├── 技能源码\bilibili-ai-video\    完整技能（可整体复制到技能库）
+│   ├── SKILL.md                   技能主文档（Codex 读取）
+│   ├── agents\openai.yaml         UI 元数据
+│   ├── scripts\                   全部可执行脚本
+│   │   ├── segments.example.json  分段脚本示例
+│   │   ├── publish.example.json   发布参数示例
+│   │   ├── gen_tts.py             配音
+│   │   ├── gen_slides.py          幻灯片
+│   │   ├── gen_cover.py           封面
+│   │   ├── assemble_video.py      剪辑成片 + 响度标准化
+│   │   ├── extract_bili_cookies.py 提取登录 Cookie
+│   │   ├── publish_bilibili.py    上传发布
+│   │   └── verify_published.py    发布验证
+│   ├── references\                流程文档 / 投稿接口文档 / 文案模板
+│   └── assets\                    示例封面与幻灯片
+└── 成品示例\                      本次实战成品（视频、封面、文案包）
+`
+
+三、环境依赖
+  - Windows + Python 3.10+
+  - ffmpeg 9.0（C:\Users\Administrator\ffmpeg\ffmpeg-9.0-essentials_build\bin\ffmpeg.exe）
+  - 微软雅黑字体（Windows 自带 msyh.ttc / msyhbd.ttc）
+  - Python 包：pip install pillow numpy requests websockets
+  - Qwen3-TTS-Q5 语音模型（本机：C:\Users\Administrator\Desktop\Qwen3-TTS-Q5）
+  - 已登录的 B 站客户端（用于提取 Cookie）
+
+四、快速上手（10 步）
+
+1. 选题与文案：参考 references\copy-template.md 写原创文案，列出 4~6 个标题候选。
+2. 分段脚本：按 scripts\segments.example.json 格式写 segments.json（每段含 id/scene/title/points/narration）。
+3. 配音：python gen_tts.py --segments segments.json --out audio --model-dir "C:\Users\Administrator\Desktop\Qwen3-TTS-Q5" --voice "35岁男性科技主播，……"
+4. 幻灯片：python gen_slides.py --segments segments.json --out slides
+5. 封面：python gen_cover.py --title "贾维斯时刻！" --subtitle "DeepSeek V4 Flash 正式版实测" --hints "1M 上下文标配,输入 1 元 / 百万 token,Agent 大幅升级" --out cover.png
+6. 成片：python assemble_video.py --segments segments.json --meta audio\meta.json --slides slides --audio audio --out . --ffmpeg <ffmpeg路径> → 得到 final_loud.mp4
+7. 登录：关闭 B 站客户端 → 以 bilibili.exe --remote-debugging-port=9222 启动并登录 → python extract_bili_cookies.py --cdp http://127.0.0.1:9222 --out cookies.json
+8. 发布参数：编辑 publish.example.json（标题/简介/标签/动态/分区 tid）。
+9. 发布：python publish_bilibili.py --video final_loud.mp4 --cover cover.png --cookies cookies.json --config publish.json → 得到 BV 号。
+10. 验证：python verify_published.py --bvid BVxxxx --cookies cookies.json，等几分钟初审公开后复查。
+
+五、发布参数速查
+  - 分区 tid：科技-计算机技术=231、科技-数码=95、知识-科学科普=201（手工指定，别依赖预测接口）
+  - human_type2（可选新分区）：人工智能=1011、科技数码=1012
+  - 标题 ≤80 字；简介 ≤2000 字；标签 ≤10 个，逗号分隔
+  - copyright=1（自制）；封面 16:10；建议响度 -16 LUFS
+  - 账号需完成手机绑定/实名才能发布
+
+六、常见坑
+  - TTS 报错：脚本必须设置 PYTHONIOENCODING=utf-8 / PYTHONUTF8=1（引擎打印 emoji）
+  - Cookie 解不开：B 站新版 Cookie 带 App-Bound 加密，只能走 CDP 提取
+  - 预上传 404：接口是 member.bilibili.com/preupload，不是 /x/vupre/web/upload/preupload
+  - upos PUT 403：请求头必须带 X-Upos-Auth
+  - 提交失败：csrf 必须等于 Cookie 里的 bili_jct；videos[0].filename 去掉扩展名，cid 用预上传的 biz_id
+  - 发布后看不到：先审核（is_pubing），几分钟后公开；被驳回看创作中心 reject_reason
+
+七、如何调用这个技能
+
+技能已安装到 Codex 技能库（即「记忆」）：C:\Users\Administrator\.codex\skills\bilibili-ai-video。
+以后直接对 Codex 说：
+  - 「用 bilibili-ai-video 技能做一期 XX 的测评视频并发布到 B 站」
+  - 「帮我按技能流程把这段文案做成成片」
+  - 「用技能里的发布脚本把 video.mp4 发到 B 站」
+
+八、成品示例说明
+
+成品示例\ 内含本次实战产出（全部原创，可当模板参考）：
+  - final_loud.mp4：成片（5 分 15 秒 / 14MB）
+  - cover.png：封面
+  - preview_1.jpg：成片画面预览
+  - DeepSeek-V4Flash-贾维斯时刻-视频文案.md：完整原创文案包
+  - narration.txt`：全片旁白逐字稿
+
+> 声明：本技能包内文案与画面均为原创制作；引用数据来自 DeepSeek 官方文档与官方公告。

@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "scene": "opening",
+    "title": "J.A.R.V.I.S. 已上线",
+    "points": ["DeepSeek V4 Flash 正式版", "Agent 能力大幅增强"],
+    "narration": "早上好，先生。我已分析完你的代码仓库，发现了 3 个性能瓶颈，修复补丁已生成，正在部署到测试环境。这不是电影，这是今天，DeepSeek V4 Flash 正式版，给我的“贾维斯时刻”。"
+  },
+  {
+    "id": 2,
+    "scene": "intro",
+    "title": "7月31日 正式版公测",
+    "points": ["官方一句话：Agent 能力大幅增强", "8月4日 开源发布"],
+    "narration": "上个月 7 月 31 号，DeepSeek 低调上线了 V4 Flash 正式版，官方就一句话：Agent 能力大幅增强。"
+  },
+  {
+    "id": 3,
+    "scene": "what",
+    "title": "V4 Flash 是什么",
+    "points": ["总参数 2840 亿", "激活参数 130 亿", "MoE 架构 · 低延迟 · 低成本"],
+    "narration": "先 30 秒看懂 V4 Flash 是什么。它是 DeepSeek V4 系列里的“快版”：总参数 2840 亿，但激活参数只要 130 亿，MoE 架构，主打低延迟、低成本。"
+  }
+]

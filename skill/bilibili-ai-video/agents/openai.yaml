@@ -1,0 +1,7 @@
+interface:
+  display_name: "B站AI视频制作发布"
+  short_description: "AI科技测评视频制作 + B站自动投稿发布完整流程"
+  default_prompt: "Use $bilibili-ai-video to produce and publish an AI tech review video to Bilibili."
+
+policy:
+  allow_implicit_invocation: true
