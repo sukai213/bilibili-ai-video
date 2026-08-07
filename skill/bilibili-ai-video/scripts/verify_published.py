@@ -21,7 +21,7 @@ def main():
     ap.add_argument("--cookies", required=True)
     args = ap.parse_args()
 
-    cookies = json.load(open(args.cookies, encoding="utf-8"))
+    cookies = json.load(open(args.cookies, encoding="utf-8-sig"))
     s = requests.Session()
     s.headers.update({"User-Agent": UA, "Referer": "https://www.bilibili.com/"})
     s.cookies.update(cookies)

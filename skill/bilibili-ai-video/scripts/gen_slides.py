@@ -135,7 +135,7 @@ def main():
     ap.add_argument("--brand", default="DEEPSEEK V4 FLASH")
     ap.add_argument("--watermark", default="「 贾维斯时刻 」")
     args = ap.parse_args()
-    segments = json.load(open(args.segments, encoding="utf-8"))
+    segments = json.load(open(args.segments, encoding="utf-8-sig"))
     os.makedirs(args.out, exist_ok=True)
     total = len(segments)
     for i, seg in enumerate(segments, 1):

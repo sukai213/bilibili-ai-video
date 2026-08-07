@@ -40,12 +40,12 @@ def main():
             if part:
                 sys.path.insert(0, part)
 
-    segments = json.load(open(args.segments, encoding="utf-8"))
+    segments = json.load(open(args.segments, encoding="utf-8-sig"))
     os.makedirs(args.out, exist_ok=True)
     meta_path = os.path.join(args.out, "meta.json")
     meta = {}
     if os.path.exists(meta_path):
-        meta = json.load(open(meta_path, encoding="utf-8"))
+        meta = json.load(open(meta_path, encoding="utf-8-sig"))
 
     from qwen3_tts_gguf.inference import TTSEngine, TTSConfig
 

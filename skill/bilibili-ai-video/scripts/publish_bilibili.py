@@ -160,8 +160,8 @@ def main():
     ap.add_argument("--config", required=True)
     args = ap.parse_args()
 
-    cookies = json.load(open(args.cookies, encoding="utf-8"))
-    cfg = json.load(open(args.config, encoding="utf-8"))
+    cookies = json.load(open(args.cookies, encoding="utf-8-sig"))
+    cfg = json.load(open(args.config, encoding="utf-8-sig"))
     csrf = cookies["bili_jct"]
     filename = os.path.basename(args.video)
     size = os.path.getsize(args.video)

@@ -111,3 +111,40 @@ python verify_published.py --bvid BV1gSup66E4i --cookies cookies.json
 - `53019` 标题过长（≤80 字）
 - 预上传 404：路径是 `member.bilibili.com/preupload`，不是 `/x/vupre/web/upload/preupload`
 - upos PUT 403：缺 `X-Upos-Auth` 请求头
+
+## 本次实战新增踩坑（2026-08-07 Qwen3.8-Max 视频，BV1Gfub6fELA）
+
+实战流程与之前一致：选题(Qwen3.8-Max) → 原创文案 17 段 → 音色克隆配音 → 幻灯片/封面 → ffmpeg 成片 → 网页投稿 API 发布。以下为本次新增问题与解决方案：
+
+### 1. PowerShell 管道传中文 → 发布乱码（最严重）
+- 现象：`@'...'@ | python -` 方式生成的 publish.json 中所有中文变成 `?`，发布后 B 站标题/简介/标签全乱码，完全没法推流。
+- 原因：Windows PowerShell 5.1 默认 `$OutputEncoding` 为 ASCII，管道传给原生进程时中文被替换成 `?`。
+- 规则：**含中文的 JSON/脚本一律禁止走 PowerShell 管道进 Python stdin**。
+  - 正确：`@'...'@ | Set-Content -Encoding UTF8 file.json`（PowerShell 内存 UTF-16 → UTF-8 文件，安全）
+  - 或直接用 `apply_patch`
+  - Python 读 PowerShell 写出的文件用 `encoding="utf-8-sig"`（带 BOM）或先转无 BOM。
+- 自查：发布前 `python -c "print(open('publish.json',encoding='utf-8').read()[:50])"` 确认无 `?`。
+
+### 2. 已发布稿件乱码的修复
+- 接口：`POST https://member.bilibili.com/x/vu/web/edit?ts=&csrf=`，body 与 add/v3 一致并加 `aid`。
+- 关键字段：`videos[0]` = `{"filename": <upos_uri 文件名去扩展名>, "title": cfg["title"], "desc": "", "cid": <biz_id>}`；`cover` 用已上传封面 URL（发布结果里保存的 `data.cover` 或封面接口返回 url）；`tag` 用逗号分隔完整重传。
+- 实测返回 `code=0` 后，view/tag 接口立即看到正确标题简介与全部 10 个标签。
+- 不要用 `x/tag/archive/add|del` 补标签：web Cookie 直接 `-403 访问权限不足`。
+
+### 3. 克隆参考音频时长限制（speaker encoder）
+- `qwen3_tts_speaker_encoder.fp16.onnx` 对超过约 30s 的音频报 `Expand node invalid expand shape`（41s 失败、30s 成功，与 onnxruntime 版本无关）。
+- 流程：先 whisper/faster-whisper 转写拿到逐句时间轴 → ffmpeg 裁剪 ≤30s 干净片段 → 用对应文本 `character_voice.py save`。
+- 本机 ffmpeg 路径：`C:\Users\Administrator\ffmpeg\ffmpeg-9.0-essentials_build\bin\ffmpeg.exe`。
+
+### 4. TTS 引擎禁止 stdin 方式运行
+- 现象：`python -` 跑引擎，spawn 子进程重载 `__main__` 报 `OSError: ... '<stdin>'`，随后"解码器超时"，引擎返回 None。
+- 规则：TTS 只能 `python gen_tts_clone.py`（脚本文件），并在 `__main__` 里 `multiprocessing.freeze_support()`。
+
+### 5. loudnorm 输出采样率
+- assemble_video.py 的 loudnorm 步骤未指定采样率时，ffmpeg 输出 96kHz AAC；按规范应补 `-ar 44100`：
+  `ffmpeg -y -i final.mp4 -af "loudnorm=I=-16:TP=-1.5:LRA=11" -c:v copy -c:a aac -b:a 192k -ar 44100 -movflags +faststart final_loud.mp4`
+
+### 6. 其他
+- 发布后 `view` 返回 -404 是审核中（is_pubing），等约 2 分钟后再验证；确认 `state=0` 公开、`playurl` 有 durl、`arc_audits` 通过。
+- `gen_slides.py` / `assemble_video.py` 直接迭代 JSON 顶层，segments 必须是数组；如果文案写成 `{"segments":[...]}`，另存 `segments_array.json` 传入。
+- 标签数量以 tag 接口复查为准：本次修复后 10 个标签全部挂上，乱码标签（如 `AI??`）不会再出现。

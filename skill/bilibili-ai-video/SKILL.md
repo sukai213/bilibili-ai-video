@@ -110,9 +110,17 @@ python publish_bilibili.py --video final_loud.mp4 --cover cover.png --cookies co
 - `bili_jct` 即 CSRF；提交需带 `csrf`（URL 参数 + body）。
 - 标题 ≤80 字、简介 ≤2000 字、标签 ≤10 个、封面 16:10。
 - 发布后先在创作中心确认 `arc_audits` 无 `reject_reason`。
+- 含中文的 JSON/脚本禁止用 PowerShell 管道 `@'...'@ | python -` 传给 stdin：中文会被编成 `?`，导致发布到 B 站的标题/简介/标签全乱码。一律用 `Set-Content -Encoding UTF8` 写文件或 `apply_patch`；PowerShell 写出的文件带 BOM，Python 读 JSON 用 `encoding="utf-8-sig"`。
+- 已发布稿件标题/简介/标签乱码时，用 `POST https://member.bilibili.com/x/vu/web/edit` 修复（body 同 add/v3，加 `aid`；`videos[0].filename`=upos_uri 文件名去扩展名，`cid`=biz_id，`cover` 用已上传封面 URL）；不要用 `x/tag/archive/add|del`（web Cookie 返回 -403）。
+- 克隆参考音频 ≤30 秒：`qwen3_tts_speaker_encoder.fp16.onnx` 对超过约 30s 的音频报 `Expand node invalid expand shape`，先裁剪再 `character_voice.py save`。
+- TTS 必须从脚本文件运行（`python gen_tts_clone.py`），不要 `python -` 管道：引擎会 spawn 多进程解码器重载 `__main__`，stdin 方式直接崩（`OSError: <stdin>` + 解码器超时）。
+- loudnorm 最后一步要显式 `-ar 44100`，否则 ffmpeg 默认输出 96kHz AAC，不符合 B 站 44.1kHz 规范。
+- 发布后立即查 `view` 接口返回 -404 属正常（`is_pubing` 审核中），等 2 分钟后再验证；`gen_slides.py`/`assemble_video.py` 要求 segments 是顶层数组，别包一层 `{"segments": [...]}`。
+- 技能文件一律 UTF-8 无 BOM（`quick_validate.py` 在中文 Windows 上按 GBK 读 SKILL.md 会崩，已修复为显式 utf-8）；.ps1 保留 BOM 供 PowerShell 5.1 解析中文。
 
 ## 资源
 
 - `scripts/`：`gen_tts.py` / `gen_slides.py` / `gen_cover.py` / `assemble_video.py` / `extract_bili_cookies.py` / `publish_bilibili.py` / `verify_published.py` / `segments.example.json`
 - `references/`：`workflow.md`（详细流程与坑）、`bilibili-upload-api.md`（投稿接口文档）、`copy-template.md`（原创文案模板）
 - `assets/`：示例封面、示例幻灯片
+

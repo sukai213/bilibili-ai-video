@@ -89,8 +89,8 @@ def main():
     ap.add_argument("--fps", type=int, default=30)
     args = ap.parse_args()
 
-    segments = json.load(open(args.segments, encoding="utf-8"))
-    meta = json.load(open(args.meta, encoding="utf-8"))
+    segments = json.load(open(args.segments, encoding="utf-8-sig"))
+    meta = json.load(open(args.meta, encoding="utf-8-sig"))
     os.makedirs(args.out, exist_ok=True)
     seg_dir = os.path.join(args.out, "seg")
     os.makedirs(seg_dir, exist_ok=True)
@@ -117,7 +117,7 @@ def main():
                                   "-c:v", "libx264", "-preset", "medium", "-crf", "20",
                                   "-pix_fmt", "yuv420p", "-r", str(args.fps),
                                   "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2",
-                                  "-shortest", out])
+                                  out])
                 print(f"seg {sid:02d} encoded ({dur:.1f}s)", flush=True)
             f.write(f"file '{out}'\n")
 
@@ -127,9 +127,9 @@ def main():
         print("joined ok", flush=True)
 
     final = os.path.join(args.out, "final.mp4")
-    total_d = total + 2.0
-    fade_out_v = max(total_d - 1.4, 0.1)
-    fade_out_a = max(total_d - 2.0, 0.1)
+    # 淡出按成片实际时长（joined 长度 = total）计算，start 必须落在视频内
+    fade_out_v = max(total - 1.4, 0.1)
+    fade_out_a = max(total - 2.0, 0.1)
     run(args.ffmpeg, [args.ffmpeg, "-y", "-i", joined, "-i", bgm,
                       "-filter_complex",
                       f"[0:v]fade=t=in:st=0:d=0.8,fade=t=out:st={fade_out_v:.2f}:d=1.2[v];"
@@ -147,7 +147,7 @@ def main():
     loud = os.path.join(args.out, "final_loud.mp4")
     run(args.ffmpeg, [args.ffmpeg, "-y", "-i", final,
                       "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
-                      "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+                      "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "44100",
                       "-movflags", "+faststart", loud])
     print("LOUD:", loud, flush=True)
 
